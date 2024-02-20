@@ -1,0 +1,101 @@
+
+class EarthView extends StatelessWidget {
+  final String ulke;
+
+  const EarthView({super.key, required this.ulke});
+
+  Future<List<Map<String, dynamic>>> veriCek(String ulke) async {
+    List<Map<String, dynamic>> depremVerileri = [];
+
+    if (ulke == 'Türkiye') {
+      // Burada Kandilli Rasathanesi'nden veri çekebilirsiniz
+      // Örnek amaçlı boş bir liste döndürüyoruz
+      return [];
+    } else {
+      final response = await http.get(Uri.parse(
+          'https://depremler.usgs.gov/depremlers/feed/v1.0/summary/all_day.geojson'));
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        final List<dynamic> depremlers = jsonData['features'];
+
+        for (var depremler in depremlers) {
+          final properties = depremler['properties'];
+          final geometry = depremler['geometry']['coordinates'];
+          final lon = geometry[0];
+          final lat = geometry[1];
+          final depth = geometry[2];
+          final mag = properties['mag'];
+          final place = properties['place'];
+          final time = properties['time'];
+          print(mag);
+          var date =
+              (DateTime.fromMillisecondsSinceEpoch(time).toIso8601String());
+
+          DateTime dateTime = DateTime.parse(date);
+          String formatliSaat =
+              "${dateTime.hour}:${dateTime.minute}:${dateTime.second}";
+
+          String dateTime2 = DateFormat('yyyy.MM.dd').format(dateTime);
+          depremVerileri.add({
+            "date": dateTime2,
+            "latitude": lat,
+            "longitude": lon,
+            "depth": depth.toStringAsFixed(3),
+            "magnitude": mag.toStringAsFixed(2),
+            "place": place,
+            "time": formatliSaat
+          });
+        }
+      }
+
+      return depremVerileri;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: context.padding.low,
+      child: FutureBuilder<List<Map<String, dynamic>>>(
+        future: veriCek(ulke),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(
+              child: CircularProgressIndicator.adaptive(),
+            );
+          } else if (snapshot.hasError) {
+            return Text("Hata: ${snapshot.error}");
+          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return Text("Veri yok");
+          } else {
+            final depremVerileri = snapshot.data!;
+            return ListView.builder(
+              itemCount: depremVerileri.length,
+              itemBuilder: (context, index) {
+                return depremlerWidget(
+                  onTap: () {
+  final lat = double.parse(deprem.lat); 
+  final lng = double.parse(deprem.lon);
+  
+  mapController.animateCamera(
+    CameraUpdate.newCameraPosition(
+      CameraPosition(target: LatLng(lat, lng), zoom: 10)  
+    )
+  );
+}
+                    date: depremVerileri[index]["date"],
+                    time: depremVerileri[index]["time"].toString(),
+                    lat: depremVerileri[index]["date"],
+                    lon: depremVerileri[index]["date"],
+                    depth: depremVerileri[index]["depth"].toString(),
+                    mag: depremVerileri[index]["magnitude"].toString(),
+                    place: depremVerileri[index]["place"]);
+              },
+            );
+          }
+        },
+      ),
+    );
+  }
+}
